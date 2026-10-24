@@ -55,14 +55,15 @@ Settings are read from environment variables, or from a `.env` file in the proje
 |---|---|---|---|
 | `LLM_API_KEY` | yes | – | API key of the LLM provider |
 | `LLM_BASE_URL` | no | Gemini's OpenAI-compatible endpoint | Any OpenAI-compatible chat-completions endpoint |
-| `LLM_MODEL` | no | `gemini-2.5-flash` | Model name; must support tool/function calling |
+| `LLM_MODEL` | no | `gemini-3.5-flash` | Model name; must support tool/function calling |
 | `LLM_MIN_INTERVAL` | no | `0` | Minimum seconds between LLM requests (helps with free-tier rate limits) |
+| `LLM_FALLBACK_MODELS` | no | – | Comma-separated models to switch to mid-run if the main model's quota is exhausted, it is not found, or it stays overloaded |
 
 The client speaks the OpenAI-compatible chat-completions API, so you can switch providers without changing code:
 
 | Provider | `LLM_BASE_URL` | Example `LLM_MODEL` |
 |---|---|---|
-| Google Gemini (default, free tier) | `https://generativelanguage.googleapis.com/v1beta/openai/` | `gemini-2.5-flash` |
+| Google Gemini (default, free tier) | `https://generativelanguage.googleapis.com/v1beta/openai/` | `gemini-3.5-flash` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
 | Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
 
@@ -165,7 +166,7 @@ Budget control: the model is told how many turns it has, warned when four remain
 
 ### LLM client ([auditor/llm.py](auditor/llm.py))
 
-A thin wrapper over the plain `openai` SDK pointed at any OpenAI-compatible endpoint. It adds bounded retries with exponential backoff (honouring `retry-after`), optional request throttling for free tiers, fail-fast errors for invalid keys, unknown models or exhausted daily quotas, and removal of any API key the provider echoes back in error messages.
+A thin wrapper over the plain `openai` SDK pointed at any OpenAI-compatible endpoint. It adds bounded retries with exponential backoff (honouring `retry-after`), optional request throttling for free tiers, automatic switching to `LLM_FALLBACK_MODELS` when a model's quota runs out or it is unavailable, fail-fast errors for invalid keys, and removal of any API key the provider echoes back in error messages.
 
 ## Inspection tools
 
@@ -221,7 +222,24 @@ python eval/run_eval.py --score-only  # re-scores existing reports
 A finding counts as correct if its rule ID is one the answer key accepts for that defect and its file matches. Duplicates count as false positives. Defensible extras listed in the key as "acceptable" are neither rewarded nor penalised.
 
 <!-- EVAL-RESULTS -->
-_Results are added here after evaluation runs._
+### Results
+
+Latest run (Gemini free tier, `--max-steps 30`). The reports and full tool-call traces are in [eval/sample_results/](eval/sample_results/):
+
+| Fixture | Reported | Correct | False positives | Missed | Precision | Recall | Steps / tool calls |
+|---|---|---|---|---|---|---|---|
+| A: obvious | 10 | 8 | 0 | 0 | 1.00 | 1.00 | 7 / 11 |
+| B: subtle | 9 | 9 | 0 | 0 | 1.00 | 1.00 | 16 / 22 |
+| C: healthy | 0 | – | 0 | – | 1.00 | – | 14 / 13 |
+| **Total** | **19** | **17** | **0** | **0** | **1.00** | **1.00** | |
+
+A's two extra findings (Flask `debug=True` and a never-closed DB connection in `app.py`) are true but outside the answer key, so they are scored as acceptable extras. The primary model's free daily quota ran out during this run; the agent switched automatically through `LLM_FALLBACK_MODELS` (`gemini-3-flash-preview`, then `gemini-3.5-flash-lite`) and finished every fixture.
+
+How the evaluation shaped the agent (kept here for transparency):
+
+- **First run (`gemini-3.5-flash`): B recall 8/9.** The agent found the token committed in git history, but the report's grounding check discarded the finding because the file no longer exists. That is exactly the situation the finding describes. Grounding now accepts files the agent observed in git history (with `line: null`). A regression test covers this.
+- **Answer-key corrections, not agent changes:** one root cause can be visible in several files (tracked bytecode *and* `server.log` are both HYG-004), so the key accepts either location. The DB-connection leak and a hardcoded DB host IP (CFG-001 vs CFG-003) were real defects in the fixture code that the key had not listed, so they are now "acceptable".
+- These are small, self-written fixtures and single runs, and LLM output varies between runs and models. Treat the numbers as a sanity check of the pipeline, not as a benchmark.
 <!-- /EVAL-RESULTS -->
 
 ## Tests
@@ -260,6 +278,7 @@ eval/
   run_eval.py            builds fixtures, runs the agent, computes precision/recall
 tests/                   pytest suite (offline)
 sample_report.json       real agent output
+eval/sample_results/     reports + tool-call traces from the evaluation run
 .env.example             configuration template (no credentials)
 ```
 

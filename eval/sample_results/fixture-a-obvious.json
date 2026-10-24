@@ -1,0 +1,105 @@
+{
+  "repository": "https://github.com/eval/fixture-a-obvious",
+  "violations": [
+    {
+      "rule_id": "SEC-003",
+      "category": "security",
+      "severity": "critical",
+      "file": ".env",
+      "line": 1,
+      "description": "Sensitive .env file is tracked in the repository.",
+      "evidence": "The file .env is present in the repository and contains DB_PASSWORD and SECRET_KEY.",
+      "recommendation": "Remove .env from the repository and add it to .gitignore. Use environment variables or a secret manager for production secrets."
+    },
+    {
+      "rule_id": "SEC-001",
+      "category": "security",
+      "severity": "critical",
+      "file": "config.py",
+      "line": 2,
+      "description": "Hardcoded credentials found in configuration file.",
+      "evidence": "config.py contains hardcoded SECRET_KEY, DATABASE_URL (with credentials), and AWS_ACCESS_KEY_ID.",
+      "recommendation": "Remove hardcoded secrets and load them from environment variables or a secure secret store."
+    },
+    {
+      "rule_id": "SEC-008",
+      "category": "security",
+      "severity": "high",
+      "file": "app.py",
+      "line": 18,
+      "description": "Flask debug mode is enabled in production-like code.",
+      "evidence": "app.py calls app.run(debug=True), which can expose sensitive information and allow arbitrary code execution in some environments.",
+      "recommendation": "Disable debug mode in production and use a production-ready WSGI server like Gunicorn."
+    },
+    {
+      "rule_id": "TST-001",
+      "category": "testing",
+      "severity": "high",
+      "file": null,
+      "line": null,
+      "description": "No automated tests found.",
+      "evidence": "There are no test files or directories (e.g., tests/, test_*.py) in the repository.",
+      "recommendation": "Implement automated tests using a framework like pytest."
+    },
+    {
+      "rule_id": "CI-001",
+      "category": "ci_cd",
+      "severity": "medium",
+      "file": null,
+      "line": null,
+      "description": "No continuous integration configured.",
+      "evidence": "There are no CI configuration files (e.g., .github/workflows) in the repository.",
+      "recommendation": "Set up a CI pipeline to run tests and linting on every push and pull request."
+    },
+    {
+      "rule_id": "CQ-003",
+      "category": "code_quality",
+      "severity": "medium",
+      "file": "app.py",
+      "line": 11,
+      "description": "Database connections are not closed, leading to potential resource leaks.",
+      "evidence": "In app.py, psycopg2.connect(DATABASE_URL) is called on every request but the connection and cursor are never closed.",
+      "recommendation": "Use a context manager or a connection pool to ensure database connections are properly closed."
+    },
+    {
+      "rule_id": "DEP-002",
+      "category": "dependency_management",
+      "severity": "medium",
+      "file": "requirements.txt",
+      "line": 1,
+      "description": "Dependencies are unpinned in requirements.txt.",
+      "evidence": "requirements.txt lists flask, psycopg2, and requests without any version constraints.",
+      "recommendation": "Pin dependencies to specific versions or ranges to ensure reproducible builds."
+    },
+    {
+      "rule_id": "HYG-001",
+      "category": "repository_hygiene",
+      "severity": "medium",
+      "file": null,
+      "line": null,
+      "description": "README file is missing.",
+      "evidence": "No README.md or equivalent file was found in the repository root.",
+      "recommendation": "Create a README.md file with project description, setup instructions, and usage details."
+    },
+    {
+      "rule_id": "HYG-002",
+      "category": "repository_hygiene",
+      "severity": "medium",
+      "file": null,
+      "line": null,
+      "description": "No .gitignore file present.",
+      "evidence": "The repository lacks a .gitignore file, leading to the tracking of build artifacts and logs.",
+      "recommendation": "Add a standard .gitignore file for Python projects."
+    },
+    {
+      "rule_id": "HYG-004",
+      "category": "repository_hygiene",
+      "severity": "low",
+      "file": "server.log",
+      "line": 1,
+      "description": "Generated files and logs are tracked in git.",
+      "evidence": "The __pycache__ directory and server.log file are tracked in the repository.",
+      "recommendation": "Remove __pycache__ and server.log from the repository and ensure they are ignored via .gitignore."
+    }
+  ]
+}

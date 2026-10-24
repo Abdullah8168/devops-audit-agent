@@ -81,6 +81,7 @@ class RepoTools:
         self._tracked: list[str] | None = None
         # Evidence bookkeeping used to ground the final report:
         self.listed_files: set[str] = set()  # paths the agent has seen exist
+        self.history_files: set[str] = set()  # paths the agent has seen in git history (may be deleted)
         self.content_seen: dict[str, set[int] | None] = {}  # path -> lines seen (None = whole file)
         self._handlers: dict[str, Callable[..., str]] = {
             "list_files": self.list_files,
@@ -296,6 +297,10 @@ class RepoTools:
             raise ToolError(f"git log failed: {res.stderr.strip() or 'no history available'}")
         count = run_git(["rev-list", "--count", "HEAD"], self.root, timeout=self.git_timeout).stdout.strip()
         out = res.stdout.strip() or "(no commits)"
+        for line in out.splitlines():  # name-status lines: "M\tpath" / "R100\told\tnew"
+            parts = line.split("\t")
+            if len(parts) >= 2 and re.fullmatch(r"[ACDMRTU]\d*", parts[0]):
+                self.history_files.update(self.normalize(p) for p in parts[1:])
         return f"Total commits on {self.default_branch}: {count or '?'}\n{out}"
 
     def git_status(self) -> str:
@@ -372,6 +377,7 @@ class RepoTools:
                     seen.add(key)
                     status = "file still tracked" if current_file in tracked else "file no longer tracked"
                     findings.append(f"  commit {commit} {current_file} [{hit.kind}] ({status}) {hit.masked_line}")
+                    self.history_files.add(self.normalize(current_file))
         header = (f"Possible secrets in git history no longer present in current files "
                   f"(last {max_commits} commits): {len(findings)}")
         return "\n".join([header, *findings[:60]])

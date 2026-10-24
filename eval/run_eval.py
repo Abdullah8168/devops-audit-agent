@@ -60,12 +60,13 @@ def build_fixture(fixture: dict[str, Any]) -> Path:
     return repo
 
 
-def _file_matches(expected: str | None, reported: str | None) -> bool:
+def _file_matches(expected: str | list[str] | None, reported: str | None) -> bool:
     if expected is None:
         return True
     if reported is None:
         return False
-    return reported == expected or reported.startswith(expected.rstrip("/") + "/")
+    options = expected if isinstance(expected, list) else [expected]
+    return any(reported == e or reported.startswith(e.rstrip("/") + "/") for e in options)
 
 
 def score(fixture: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:

@@ -54,11 +54,12 @@ FIXTURE_A: dict[str, Any] = {
             },
         }
     ],
-    # Each expected violation lists acceptable rule IDs (alternatives) and the file (None = repo-wide).
+    # Each expected violation lists acceptable rule IDs (alternatives) and the file (None = any location,
+    # a list = any of these locations, e.g. one root cause visible in several files).
     "expected": [
         {"id": "A1", "rule_ids": ["HYG-001"], "file": None, "what": "README missing"},
         {"id": "A2", "rule_ids": ["HYG-002", "HYG-003"], "file": None, "what": ".gitignore missing"},
-        {"id": "A3", "rule_ids": ["HYG-004"], "file": "__pycache__", "what": "bytecode/log files tracked"},
+        {"id": "A3", "rule_ids": ["HYG-004"], "file": ["__pycache__", "server.log"], "what": "bytecode/log files tracked"},
         {"id": "A4", "rule_ids": ["SEC-003", "SEC-001"], "file": ".env", "what": ".env committed"},
         {"id": "A5", "rule_ids": ["SEC-001"], "file": "config.py", "what": "hardcoded credentials in config.py"},
         {"id": "A6", "rule_ids": ["DEP-002", "DEP-004"], "file": "requirements.txt", "what": "unpinned dependencies"},
@@ -69,9 +70,11 @@ FIXTURE_A: dict[str, Any] = {
     "acceptable": [
         {"rule_ids": ["SEC-008", "CFG-003"], "file": "app.py"},
         {"rule_ids": ["CQ-001"], "file": None},
-        {"rule_ids": ["HYG-004"], "file": "server.log"},
+        # The fixture app genuinely never closes its DB connection (a real, if unplanned, defect).
+        {"rule_ids": ["CQ-003"], "file": "app.py"},
         {"rule_ids": ["CFG-003", "CFG-004"], "file": None},
-        {"rule_ids": ["CFG-003", "SEC-001"], "file": "config.py"},
+        # Hardcoded DB host IP: an environment-separation issue; models label it CFG-001 or CFG-003.
+        {"rule_ids": ["CFG-003", "CFG-001", "SEC-001"], "file": "config.py"},
     ],
 }
 

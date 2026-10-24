@@ -1,0 +1,41 @@
+{
+  "fixtures": [
+    {
+      "fixture": "fixture-a-obvious",
+      "reported": 10,
+      "true_positives": 8,
+      "false_positives": [],
+      "acceptable_extras": 2,
+      "missed": [],
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "fixture": "fixture-b-subtle",
+      "reported": 9,
+      "true_positives": 9,
+      "false_positives": [],
+      "acceptable_extras": 0,
+      "missed": [],
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "fixture": "fixture-c-healthy",
+      "reported": 0,
+      "true_positives": 0,
+      "false_positives": [],
+      "acceptable_extras": 0,
+      "missed": [],
+      "precision": 1.0,
+      "recall": null
+    }
+  ],
+  "overall": {
+    "true_positives": 17,
+    "false_positives": 0,
+    "expected": 17,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

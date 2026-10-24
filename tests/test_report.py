@@ -105,3 +105,17 @@ def test_empty_report_is_valid(tmp_path):
 def test_invalid_report_is_refused(tmp_path):
     with pytest.raises(ReportError):
         write_report({"repository": "x", "violations": [{"severity": "bad"}]}, tmp_path / "r.json")
+
+
+def test_grounding_accepts_deleted_files_seen_in_history(repo_factory):
+    from tests.conftest import add_commit
+
+    repo = repo_factory({"deploy.sh": "TOKEN='Zq8LmN3pWx7Kd2'\n"})
+    add_commit(repo, {"deploy.sh": None}, "remove deploy script")
+    tools = RepoTools(repo, "main")
+    claim = violation(rule_id="SEC-002", severity="high", file="deploy.sh", line=1)
+    accepted, rejected = process_violations([claim], tools)
+    assert accepted == [] and "does not exist" in rejected[0].reason  # never observed
+    tools.scan_secrets()
+    accepted, _ = process_violations([claim], tools)
+    assert len(accepted) == 1 and accepted[0]["line"] is None

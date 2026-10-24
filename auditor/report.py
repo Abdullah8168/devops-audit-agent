@@ -154,6 +154,11 @@ def ground(violation: dict[str, Any], evidence: Any) -> str | None:
         if any(f.startswith(file + "/") for f in evidence.listed_files):
             violation["line"] = None
             return None
+        # Files that only exist in git history (e.g. a secret committed then deleted) are fine
+        # if the agent saw them through git_log or the history secret scan.
+        if file in getattr(evidence, "history_files", set()):
+            violation["line"] = None
+            return None
         return f"file '{file}' does not exist in the repository"
     if file not in evidence.listed_files and file not in evidence.content_seen:
         return f"file '{file}' was never inspected with a tool"

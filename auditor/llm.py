@@ -17,16 +17,21 @@ import json
 import os
 import random
 import re
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash"
 
 
 class LLMError(Exception):
     """The LLM provider failed in a way the agent cannot recover from."""
+
+
+class ModelUnavailable(LLMError):
+    """The current model cannot serve requests (quota exhausted, not found, overloaded)."""
 
 
 @dataclass
@@ -66,6 +71,7 @@ class LLMSettings:
     max_retries: int = 6
     min_interval_s: float = 0.0
     temperature: float = 0.1
+    fallback_models: list[str] = field(default_factory=list)
 
     @classmethod
     def from_env(cls, model: str | None = None) -> LLMSettings:
@@ -87,6 +93,7 @@ class LLMSettings:
             model=(model or os.getenv("LLM_MODEL") or DEFAULT_MODEL).strip(),
             base_url=(os.getenv("LLM_BASE_URL") or DEFAULT_BASE_URL).strip(),
             min_interval_s=max(0.0, min_interval),
+            fallback_models=[m.strip() for m in os.getenv("LLM_FALLBACK_MODELS", "").split(",") if m.strip()],
         )
 
 
@@ -122,6 +129,8 @@ class OpenAICompatibleClient:
             timeout=settings.timeout_s,
             max_retries=0,  # retries are handled here so they can be logged and bounded
         )
+        self._fallbacks = [m for m in settings.fallback_models if m != settings.model]
+        self.model_switches: list[str] = []
         self._last_request = 0.0
         self.total_usage: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0, "requests": 0}
 
@@ -147,13 +156,30 @@ class OpenAICompatibleClient:
     def chat(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], tool_choice: str = "auto"
     ) -> LLMResponse:
+        """Send one chat request; on an unavailable model, continue with the next fallback model."""
+        while True:
+            try:
+                return self._chat_with_retries(messages, tools, tool_choice)
+            except ModelUnavailable as exc:
+                if not self._fallbacks:
+                    raise
+                previous, self.model = self.model, self._fallbacks.pop(0)
+                note = f"model {previous!r} unavailable ({str(exc)[:120]}); switching to {self.model!r}"
+                self.model_switches.append(note)
+                print(f"[llm] {note}", file=sys.stderr, flush=True)
+
+    def _chat_with_retries(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], tool_choice: str
+    ) -> LLMResponse:
         oa = self._openai
         last_error: Exception | None = None
-        for attempt in range(self.settings.max_retries + 1):
+        # With a fallback available, give up on an overloaded model sooner.
+        max_retries = min(self.settings.max_retries, 2) if self._fallbacks else self.settings.max_retries
+        for attempt in range(max_retries + 1):
             self._throttle()
             try:
                 completion = self._client.chat.completions.create(
-                    model=self.settings.model,
+                    model=self.model,
                     messages=messages,
                     tools=tools,
                     tool_choice=tool_choice,
@@ -165,13 +191,13 @@ class OpenAICompatibleClient:
             except oa.PermissionDeniedError as exc:
                 raise LLMError(f"LLM request was denied: {self._err(exc)}") from exc
             except oa.NotFoundError as exc:
-                raise LLMError(
-                    f"Model {self.settings.model!r} or endpoint not found (check LLM_MODEL / LLM_BASE_URL): {self._err(exc)}"
+                raise ModelUnavailable(
+                    f"Model {self.model!r} or endpoint not found (check LLM_MODEL / LLM_BASE_URL): {self._err(exc)}"
                 ) from exc
             except oa.RateLimitError as exc:
                 text = str(exc)
                 if re.search(r"PerDay|per day|daily", text, re.IGNORECASE):
-                    raise LLMError(
+                    raise ModelUnavailable(
                         "LLM daily quota exhausted. Try again tomorrow, use another model "
                         f"(LLM_MODEL) or another API key. Detail: {self._err(exc)}"
                     ) from exc
@@ -188,10 +214,10 @@ class OpenAICompatibleClient:
                     delay = min(60.0, 2.0 * 2**attempt)
                 else:
                     raise LLMError(f"LLM API error {exc.status_code}: {self._err(exc)}") from exc
-            if attempt < self.settings.max_retries:
+            if attempt < max_retries:
                 time.sleep(delay + random.uniform(0, 1.0))
-        raise LLMError(
-            f"LLM request failed after {self.settings.max_retries + 1} attempts: {self._err(last_error)}"
+        raise ModelUnavailable(
+            f"LLM request to {self.model!r} failed after {max_retries + 1} attempts: {self._err(last_error)}"
         )
 
     def _err(self, exc: Exception | None) -> str:

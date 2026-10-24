@@ -1,0 +1,95 @@
+{
+  "repository": "https://github.com/eval/fixture-b-subtle",
+  "violations": [
+    {
+      "rule_id": "SEC-005",
+      "category": "security",
+      "severity": "critical",
+      "file": ".github/workflows/preview.yml",
+      "line": 13,
+      "description": "pull_request_target workflow checks out untrusted PR head code and executes a script from it with secrets and write-all permissions.",
+      "evidence": "- uses: actions/checkout@v4\n  with:\n    ref: ${{ github.event.pull_request.head.sha }}\n...\n  run: |\n    pip install -r requirements.txt\n    python scripts/publish_preview.py",
+      "recommendation": "Avoid using pull_request_target with head.sha checkout and execution of untrusted scripts; use pull_request instead or do not execute PR-authored code with secrets."
+    },
+    {
+      "rule_id": "CI-002",
+      "category": "ci_cd",
+      "severity": "high",
+      "file": ".github/workflows/ci.yml",
+      "line": 3,
+      "description": "CI workflow triggers on 'master' branch whereas the repository's default branch is 'main'.",
+      "evidence": "on:\n  push:\n    branches: [master]\n  pull_request:\n    branches: [master]",
+      "recommendation": "Update branch triggers to target 'main'."
+    },
+    {
+      "rule_id": "CI-003",
+      "category": "ci_cd",
+      "severity": "high",
+      "file": ".github/workflows/ci.yml",
+      "line": 23,
+      "description": "CI workflow masks test failures by appending '|| true'.",
+      "evidence": "run: pytest -q || true",
+      "recommendation": "Remove '|| true' so that test failures correctly fail the CI pipeline."
+    },
+    {
+      "rule_id": "SEC-004",
+      "category": "security",
+      "severity": "high",
+      "file": ".github/workflows/preview.yml",
+      "line": 7,
+      "description": "Overly broad write-all token permissions granted to the workflow.",
+      "evidence": "permissions: write-all",
+      "recommendation": "Grant only the minimum required permissions (e.g., contents: read)."
+    },
+    {
+      "rule_id": "SEC-006",
+      "category": "security",
+      "severity": "high",
+      "file": ".github/workflows/preview.yml",
+      "line": 17,
+      "description": "Potential script injection via untrusted event data interpolated directly into run command.",
+      "evidence": "run: echo \"Building preview for ${{ github.event.pull_request.title }}\"",
+      "recommendation": "Pass untrusted event data via environment variables instead of direct shell interpolation."
+    },
+    {
+      "rule_id": "SEC-002",
+      "category": "security",
+      "severity": "high",
+      "file": "scripts/deploy.sh",
+      "line": null,
+      "description": "Hardcoded credential present in git history.",
+      "evidence": "commit c436888 scripts/deploy.sh [hardcoded_credential] (file no longer tracked) DEPLOY_TOKEN=\"[REDACTED:len=28]\"",
+      "recommendation": "Revoke the exposed credential and rewrite git history or rotate secrets."
+    },
+    {
+      "rule_id": "CFG-001",
+      "category": "configuration",
+      "severity": "medium",
+      "file": "metrics/settings.py",
+      "line": 5,
+      "description": "Machine-specific absolute path hardcoded in configuration/code.",
+      "evidence": "DATA_DIR = \"C:/Users/jdoe/projects/metrics/data\"",
+      "recommendation": "Use relative paths or environment variables for data directories."
+    },
+    {
+      "rule_id": "DEP-003",
+      "category": "dependency_management",
+      "severity": "medium",
+      "file": "pyproject.toml",
+      "line": 5,
+      "description": "Inconsistent dependency specifications between pyproject.toml and requirements.txt.",
+      "evidence": "pyproject.toml: dependencies = [\"requests>=2.20,<2.30\", ...]\nrequirements.txt: requests==2.31.0",
+      "recommendation": "Align dependency versions across all manifests."
+    },
+    {
+      "rule_id": "CFG-002",
+      "category": "configuration",
+      "severity": "low",
+      "file": ".vscode/settings.json",
+      "line": 2,
+      "description": "Committed IDE settings file containing user-specific absolute paths.",
+      "evidence": "\"python.defaultInterpreterPath\": \"C:\\\\Users\\\\jdoe\\\\envs\\\\metrics\\\\python.exe\"",
+      "recommendation": "Add .vscode/settings.json to .gitignore or remove machine-specific settings."
+    }
+  ]
+}

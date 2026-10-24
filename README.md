@@ -133,7 +133,15 @@ The run is fully unattended: no prompts, no interaction.
 - A clean repository produces `"violations": []`.
 - Rule IDs come from a fixed catalog ([auditor/rules.py](auditor/rules.py)) so results are comparable across runs: `HYG` repository hygiene, `DEP` dependencies, `CQ` code quality, `TST` testing, `CI` GitHub Actions/CI, `SEC` security, `CFG` configuration, `COL` collaboration, `BLD` build & release. Each category has a `-099` ID for genuine issues outside the predefined rules.
 
-[sample_report.json](sample_report.json) is real output from the agent (see [Evaluation](#evaluation)).
+### Sample report
+
+[sample_report.json](sample_report.json) is unedited agent output from a real run against **[Abdullah8168/devops-audit-demo](https://github.com/Abdullah8168/devops-audit-demo)**, a public repository built from evaluation fixture B to contain deliberate defects and *fake* credentials. GitHub Actions is disabled there so its intentionally vulnerable workflow can never run. Its tool-call trace is [sample_report.json.trace.jsonl](sample_report.json.trace.jsonl). Reproduce it with:
+
+```bash
+python agent.py --repo https://github.com/Abdullah8168/devops-audit-demo --output report.json
+```
+
+In 17 steps and 16 tool calls the agent reported 8 violations: `pull_request_target` checking out and running PR code (critical); CI triggering on `master` while the default branch is `main`; `write-all` token permissions; script injection via the PR title; a deploy token that exists only in git history; a machine-specific path; conflicting `requests` versions; and test failures masked with `|| true`. Run against this project's own repository, the agent reports no violations.
 
 ## Architecture
 

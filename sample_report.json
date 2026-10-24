@@ -1,0 +1,85 @@
+{
+  "repository": "https://github.com/Abdullah8168/devops-audit-demo",
+  "violations": [
+    {
+      "rule_id": "SEC-005",
+      "category": "security",
+      "severity": "critical",
+      "file": ".github/workflows/preview.yml",
+      "line": 4,
+      "description": "Dangerous pull_request_target workflow checks out untrusted PR head code and runs with write-all permissions and secret access.",
+      "evidence": ".github/workflows/preview.yml uses pull_request_target, checks out ref: ${{ github.event.pull_request.head.sha }}, sets permissions: write-all, and exposes secrets.DEPLOY_TOKEN.",
+      "recommendation": "Replace pull_request_target with pull_request, remove write-all permissions, and do not pass deployment secrets to PR preview builds."
+    },
+    {
+      "rule_id": "CI-002",
+      "category": "ci_cd",
+      "severity": "high",
+      "file": ".github/workflows/ci.yml",
+      "line": 5,
+      "description": "CI workflow triggers on master branch but repository default branch is main.",
+      "evidence": "on.push.branches: [master] and on.pull_request.branches: [master] in .github/workflows/ci.yml lines 5-7.",
+      "recommendation": "Update CI workflow triggers to target main instead of master."
+    },
+    {
+      "rule_id": "SEC-004",
+      "category": "security",
+      "severity": "high",
+      "file": ".github/workflows/preview.yml",
+      "line": 7,
+      "description": "Overly broad GITHUB_TOKEN permissions (write-all) configured in PR preview workflow.",
+      "evidence": "permissions: write-all in .github/workflows/preview.yml line 7.",
+      "recommendation": "Set explicit, least-privilege permissions (e.g. contents: read) instead of write-all."
+    },
+    {
+      "rule_id": "SEC-006",
+      "category": "security",
+      "severity": "high",
+      "file": ".github/workflows/preview.yml",
+      "line": 17,
+      "description": "Untrusted GitHub event data interpolated directly into shell command in workflow.",
+      "evidence": "run: echo \"Building preview for ${{ github.event.pull_request.title }}\" in .github/workflows/preview.yml line 17.",
+      "recommendation": "Pass the pull request title via an environment variable rather than direct string interpolation in shell scripts."
+    },
+    {
+      "rule_id": "SEC-002",
+      "category": "security",
+      "severity": "high",
+      "file": "scripts/deploy.sh",
+      "line": null,
+      "description": "A live-looking deployment token was committed in git history (scripts/deploy.sh in commit 26b5a8f).",
+      "evidence": "scripts/deploy.sh added in commit 26b5a8f with DEPLOY_TOKEN=[REDACTED:len=28] (removed in subsequent commit 1f3d3f5).",
+      "recommendation": "Revoke the leaked DEPLOY_TOKEN immediately and purge git history using git-filter-repo or BFG Repo-Cleaner."
+    },
+    {
+      "rule_id": "CFG-001",
+      "category": "configuration",
+      "severity": "medium",
+      "file": "metrics/settings.py",
+      "line": 5,
+      "description": "Machine-specific absolute Windows paths hardcoded in settings and IDE configuration.",
+      "evidence": "DATA_DIR = \"C:/Users/jdoe/projects/metrics/data\" in metrics/settings.py line 5 and \"python.defaultInterpreterPath\": \"C:\\\\Users\\\\jdoe\\\\envs\\\\metrics\\\\python.exe\" in .vscode/settings.json line 2.",
+      "recommendation": "Use portable paths relative to the project root or environment variables instead of hardcoded user-specific Windows paths."
+    },
+    {
+      "rule_id": "DEP-003",
+      "category": "dependency_management",
+      "severity": "medium",
+      "file": "pyproject.toml",
+      "line": 5,
+      "description": "Inconsistent dependency specifications across pyproject.toml and requirements.txt.",
+      "evidence": "pyproject.toml specifies requests>=2.20,<2.30 while requirements.txt pins requests==2.31.0 and adds uvicorn==0.29.0.",
+      "recommendation": "Consolidate dependency declarations so pyproject.toml and requirements.txt are consistent."
+    },
+    {
+      "rule_id": "TST-003",
+      "category": "testing",
+      "severity": "medium",
+      "file": ".github/workflows/ci.yml",
+      "line": 23,
+      "description": "Test failures are masked in CI using || true.",
+      "evidence": "run: pytest -q || true in .github/workflows/ci.yml line 23.",
+      "recommendation": "Remove || true so that test failures correctly fail the CI pipeline."
+    }
+  ]
+}

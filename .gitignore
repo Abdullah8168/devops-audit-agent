@@ -35,3 +35,4 @@ eval/results/
 .DS_Store
 Thumbs.db
 !eval/sample_results/*.trace.jsonl
+!sample_report.json.trace.jsonl

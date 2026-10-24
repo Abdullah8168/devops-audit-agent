@@ -34,3 +34,4 @@ eval/results/
 .idea/
 .DS_Store
 Thumbs.db
+!eval/sample_results/*.trace.jsonl

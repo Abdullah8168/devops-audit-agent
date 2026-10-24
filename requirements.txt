@@ -1,0 +1,6 @@
+# Runtime dependencies (compatible-release ranges; tested versions in comments)
+openai>=1.40,<3            # OpenAI-compatible client used for Gemini / OpenAI / Groq
+python-dotenv>=1.0,<2      # loads .env
+PyYAML>=6.0,<7             # GitHub Actions workflow parsing
+ruff>=0.5,<1               # static lint tool used by run_ruff (never executes repo code)
+tomli>=2.0,<3; python_version < "3.11"

@@ -37,6 +37,8 @@ cd devops-audit-agent
 
 python -m venv .venv
 # Windows:      .venv\Scripts\activate
+#               (if PowerShell says "running scripts is disabled", first run:
+#                Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass)
 # macOS/Linux:  source .venv/bin/activate
 
 pip install -r requirements.txt
